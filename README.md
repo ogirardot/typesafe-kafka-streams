@@ -14,6 +14,12 @@ streams.typesafe
   .to("validated_topic") // this part expects implicit Serdes in scope so we need to import com.github.ogirardot.kafka.streams.KafkaStreamsImplicitSerdes._
 ```
 
+or you can just use the `TKafkaStreams` trait that will help you bootstrap and start your application. To use it :
+
+* Define all the variables/methods needed by the API
+* Then use the `source(topic: String)` method to create as many new TKStream as you need providing the implicits needed
+* And finally call `start(props)` when you're done.
+
 ## What is different in this API
 A few key points make this draft easier to use than the original Java 8 API :
 
