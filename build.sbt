@@ -17,3 +17,5 @@ resolvers in ThisBuild ++= Seq(
   "confluent" at "http://packages.confluent.io/maven/",
   "cakesolutions" at "http://dl.bintray.com/cakesolutions/maven/"
 )
+
+publishTo := Some("conjars.org" at "http://conjars.org/repo")
