@@ -34,7 +34,7 @@ import fr.psug.kafka.streams.KafkaStreamsImplicits._
 val streams: KStream[String, String] = ???
 streams.typesafe
   .filter((k, v) => k.startsWith("valid_"))
-  .to("validated_topic") // this part expects implicit Serdes in scope so we need to import com.github.ogirardot.kafka.streams.KafkaStreamsImplicitSerdes._
+  .to("validated_topic") // this part expects implicit Serdes in scope so we need to import fr.psug.kafka.streams.KafkaStreamsImplicitSerdes._
 ```
 
 ### Creating a typesafe KStream directly
