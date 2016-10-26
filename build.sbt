@@ -32,7 +32,6 @@ sonatypeProfileName := "fr.psug"
 // To sync with Maven central, you need to supply the following information:
 pomExtra in Global := {
   <url>https://github.com/ogirardot/typesafe-kafka-streams</url>
-  <!-- License of your choice -->
     <licenses>
       <license>
         <name>MIT</name>
