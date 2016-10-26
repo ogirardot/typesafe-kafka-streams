@@ -2,8 +2,23 @@
 A started draft of a typesafe - scala - compatible API
 
 ## How to use
-The artifact is deployed (TODO) on conjars 
+The artifact is deployed on sonatype's central repository, so all you need is to add it to your resolvers and use it like that : 
 
+```
+resolvers += Resolver.sonatypeRepo("snapshot")
+
+libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.1.0-SNAPSHOT"
+```
+
+For now there is no official release, just a snapshot.
+
+## In practice
+You've got two options :
+
+* You can improve your current `KStream[K, V]` 
+* Or use a dedicated trait `TKafkaStreams` to create a typesafe KStream directly for you.
+
+### Improving your existing KStream
 Once you've created your `KStream[K, V]` you can use the `.typesafe` method to get a Scala friendly Kakfa Stream API : 
 ```
 import fr.psug.kafka.streams.KafkaStreamsImplicits._
@@ -14,13 +29,15 @@ streams.typesafe
   .to("validated_topic") // this part expects implicit Serdes in scope so we need to import com.github.ogirardot.kafka.streams.KafkaStreamsImplicitSerdes._
 ```
 
-or you can just use the `TKafkaStreams` trait that will help you bootstrap and start your application. To use it :
+### Creating a typesafe KStream directly
+You just need to use the `TKafkaStreams` trait, it will help you bootstrap and start your application. To use it :
 
 * Define all the variables/methods needed by the API
 * Then use the `source(topic: String)` method to create as many new TKStream as you need providing the implicits needed
 * And finally call `start(props)` when you're done.
 
 ## What is different in this API
+
 A few key points make this draft easier to use than the original Java 8 API :
 
 * It is Scala friendly in terms of types. for example `Predicates[K, V]` are `(K, V) => Boolean`.

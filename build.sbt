@@ -17,10 +17,10 @@ libraryDependencies ++= Seq(
 resolvers in ThisBuild ++= Seq(
   "conjars.org" at "http://conjars.org/repo",
   "confluent" at "http://packages.confluent.io/maven/",
-  "cakesolutions" at "http://dl.bintray.com/cakesolutions/maven/"
+  "cakesolutions" at "http://dl.bintray.com/cakesolutions/maven/",
+  Resolver.sonatypeRepo("snapshot"),
+  Resolver.sonatypeRepo("releases")
 )
-
-publishTo := Some("conjars.org" at "http://conjars.org/repo")
 
 headers := Map(
   "scala" -> MIT("2016", "Fred Cecilia, Valentin Kasas, Olivier Girardot")
