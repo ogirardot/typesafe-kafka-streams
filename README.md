@@ -7,7 +7,15 @@ The artifact is deployed on sonatype's central repository, so all you need is to
 ```
 resolvers += Resolver.sonatypeRepo("snapshot")
 
-libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.1.0-SNAPSHOT"
+libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.1.1-SNAPSHOT"
+```
+
+Or to use the latest stable release
+
+```
+resolvers += Resolver.sonatypeRepo("releases")
+
+libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.1.0"
 ```
 
 For now there is no official release, just a snapshot.
