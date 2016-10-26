@@ -1,3 +1,5 @@
+import de.heikoseeberger.sbtheader.license.MIT
+
 name := "typesafe-kafka-streams"
 
 organization := "com.github.ogirardot.kafka"
@@ -19,3 +21,7 @@ resolvers in ThisBuild ++= Seq(
 )
 
 publishTo := Some("conjars.org" at "http://conjars.org/repo")
+
+headers := Map(
+  "scala" -> MIT("2016", "Fred Cecilia, Valentin Kasas, Olivier Girardot")
+)
