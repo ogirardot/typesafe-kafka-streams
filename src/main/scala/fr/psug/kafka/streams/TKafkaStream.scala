@@ -19,7 +19,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.github.ogirardot.kafka.streams
+package fr.psug.kafka.streams
 
 import java.util.Properties
 

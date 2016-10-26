@@ -6,7 +6,7 @@ The artifact is deployed (TODO) on conjars
 
 Once you've created your `KStream[K, V]` you can use the `.typesafe` method to get a Scala friendly Kakfa Stream API : 
 ```
-import com.github.ogirardot.kafka.streams.KafkaStreamsImplicits._
+import fr.psug.kafka.streams.KafkaStreamsImplicits._
 
 val streams: KStream[String, String] = ???
 streams.typesafe
