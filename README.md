@@ -18,8 +18,6 @@ resolvers += Resolver.sonatypeRepo("releases")
 libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.1.0"
 ```
 
-For now there is no official release, just a snapshot.
-
 ## In practice
 You've got two options :
 
