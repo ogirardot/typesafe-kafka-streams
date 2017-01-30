@@ -23,7 +23,7 @@ package fr.psug.kafka.streams
 
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.KeyValue
-import org.apache.kafka.streams.kstream.{Aggregator, Initializer, Reducer, _}
+import org.apache.kafka.streams.kstream._
 import org.apache.kafka.streams.processor.{Processor, ProcessorSupplier, StreamPartitioner}
 
 import scala.language.implicitConversions
@@ -69,9 +69,9 @@ class TKStream[K, V](val source: KStream[K, V]) {
       override def apply(value: V): V1 = mapper(value)
     })
 
-  def print(keySerde: Serde[K], valSerde: Serde[V]) = source.print(keySerde, valSerde)
+  def print(keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
 
-  def writeAsText(filePath: String)(implicit keySerde: Serde[K], valSerde: Serde[V]) =
+  def writeAsText(filePath: String)(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit =
     source.writeAsText(filePath, keySerde, valSerde)
 
   def flatMap[K1, V1](mapper: (K, V) => Iterable[(K1, V1)]): TKStream[K1, V1] =
@@ -111,7 +111,7 @@ class TKStream[K, V](val source: KStream[K, V]) {
     (in, out)
   }
 
-  def foreach(func: (K, V) => Unit) =
+  def foreach(func: (K, V) => Unit): Unit =
     source.foreach(new ForeachAction[K, V] {
       override def apply(key: K, value: V): Unit = func(key, value)
     })
@@ -123,11 +123,11 @@ class TKStream[K, V](val source: KStream[K, V]) {
                                                                    valSerde: Serde[V]): TKStream[K, V] =
     source.through(keySerde, valSerde, partitioner, topic)
 
-  def to(topic: String)(implicit keySerde: Serde[K], valSerde: Serde[V]) = {
+  def to(topic: String)(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit = {
     source.to(keySerde, valSerde, topic)
   }
 
-  def to(partitioner: StreamPartitioner[K, V], topic: String)(implicit keySerde: Serde[K], valSerde: Serde[V]) =
+  def to(partitioner: StreamPartitioner[K, V], topic: String)(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit =
     source.to(keySerde, valSerde, partitioner, topic)
 
   def transform[K1, V1](transformerSupplier: () => Transformer[K, V, KeyValue[K1, V1]],
@@ -143,7 +143,7 @@ class TKStream[K, V](val source: KStream[K, V]) {
     }, stateStoreNames: _*)
   }
 
-  def process(processorSupplier: () => Processor[K, V], stateStoreNames: String*) = {
+  def process(processorSupplier: () => Processor[K, V], stateStoreNames: String*): Unit = {
     source.process(new ProcessorSupplier[K, V] {
       override def get(): Processor[K, V] = processorSupplier()
     }, stateStoreNames: _*)
@@ -167,62 +167,49 @@ class TKStream[K, V](val source: KStream[K, V]) {
     }, windows, keySerde, thisValueSerde, otherValueSerde)
   }
 
+  def groupByKey(): TKGroupedStream[K, V] = {
+    new TKGroupedStream(source.groupByKey())
+  }
+
+  def groupByKey(keySerde: Serde[K], valSerde: Serde[V]): TKGroupedStream[K, V] = {
+    new TKGroupedStream(source.groupByKey(keySerde, valSerde))
+  }
+
+  def groupBy[K1](keySelector: (K, V) => K1): TKGroupedStream[K1, V] = {
+    new TKGroupedStream(source.groupBy(new KeyValueMapper[K, V, K1] {
+      override def apply(key: K, value: V): K1 = keySelector(key, value)
+
+    }))
+  }
+
+  def groupBy[K1](keySelector: (K, V) => K1)(implicit keySerde: Serde[K1], valSerde: Serde[V]): TKGroupedStream[K1, V] = {
+    new TKGroupedStream(source.groupBy(new KeyValueMapper[K, V, K1] {
+      override def apply(key: K, value: V): K1 = keySelector(key, value)
+
+    }, keySerde, valSerde))
+  }
+
   def leftJoin[V1, R](otherStream: TKStream[K, V1], joiner: (V, V1) => R, windows: JoinWindows)(
-    implicit keySerde: Serde[K],
+    implicit keySerde: Serde[K], thisValueSerde: Serde[V],
     otherValueSerde: Serde[V1]): TKStream[K, R] =
     source.leftJoin(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
-    }, windows, keySerde, otherValueSerde)
+    }, windows, keySerde, thisValueSerde, otherValueSerde)
+
+  def leftJoin[V1, V2](otherStream: TKStream[K, V1], joiner: (V, V1) => V2, windows: JoinWindows): TKStream[K, V2] =
+    source.leftJoin(otherStream.source, new ValueJoiner[V, V1, V2] {
+      override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
+    }, windows)
 
   def leftJoin[V1, V2](table: KTable[K, V1], joiner: (V, V1) => V2): TKStream[K, V2] =
     source.leftJoin(table, new ValueJoiner[V, V1, V2] {
       override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
     })
 
-  def reduceByKey[W <: Window](reducer: (V, V) => V, windows: Windows[W])(
-    implicit keySerde: Serde[K],
-    valueSerde: Serde[V]): KTable[Windowed[K], V] = {
-    source.reduceByKey(new Reducer[V] {
-      override def apply(value1: V, value2: V): V = reducer(value1, value2)
-    }, windows, keySerde, valueSerde)
-  }
+  def leftJoin[V1, V2](table: KTable[K, V1], joiner: (V, V1) => V2)
+                      (implicit keySerde: Serde[K], valSerde: Serde[V]): TKStream[K, V2] =
+    source.leftJoin(table, new ValueJoiner[V, V1, V2] {
+      override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
+    }, keySerde, valSerde)
 
-  def reduceByKey(reducer: (V, V) => V, name: String)(implicit keySerde: Serde[K],
-                                                      valueSerde: Serde[V]): KTable[K, V] = {
-    source.reduceByKey(new Reducer[V] {
-      override def apply(value1: V, value2: V): V = reducer(value1, value2)
-    }, keySerde, valueSerde, name)
-  }
-
-  def reduceByKey(reducer: (V, V) => V, name: String): KTable[K, V] = {
-    source.reduceByKey(new Reducer[V] {
-      override def apply(value1: V, value2: V): V = reducer(value1, value2)
-    }, name)
-  }
-
-  def aggregateByKey[T, W <: Window](initializer: () => T, aggregator: (K, V, T) => T, windows: Windows[W])(
-    implicit keySerde: Serde[K],
-    aggValueSerde: Serde[T]): KTable[Windowed[K], T] = {
-    source.aggregateByKey(new Initializer[T] {
-      override def apply(): T = initializer()
-    }, new Aggregator[K, V, T] {
-      override def apply(aggKey: K, value: V, aggregate: T): T = aggregator(aggKey, value, aggregate)
-    }, windows, keySerde, aggValueSerde)
-  }
-
-  def aggregateByKey[T](initializer: () => T, aggregator: (K, V, T) => T, name: String)(
-    implicit keySerde: Serde[K],
-    aggValueSerde: Serde[T]): KTable[K, T] = {
-    source.aggregateByKey(new Initializer[T] {
-      override def apply(): T = initializer()
-    }, new Aggregator[K, V, T] {
-      override def apply(aggKey: K, value: V, aggregate: T): T = aggregator(aggKey, value, aggregate)
-    }, keySerde, aggValueSerde, name)
-  }
-
-  def countByKey[W <: Window](windows: Windows[W])(implicit keySerde: Serde[K]): KTable[Windowed[K], java.lang.Long] =
-    source.countByKey(windows, keySerde)
-
-  def countByKey(name: String)(implicit keySerde: Serde[K]): KTable[K, java.lang.Long] =
-    source.countByKey(keySerde, name)
 }
