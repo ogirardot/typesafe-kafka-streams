@@ -39,6 +39,8 @@ class TKStream[K, V](val source: KStream[K, V]) {
 
   private implicit def streamToTypesafe[I, J](source: KStream[I, J]): TKStream[I, J] = new TKStream(source)
 
+  private implicit def groupedStreamToTypesafe[I, J](source: KGroupedStream[I, J]): TKGroupedStream[I, J] = new TKGroupedStream(source)
+
   def filter(predicate: (K, V) => Boolean): TKStream[K, V] =
     source.filter(new Predicate[K, V] {
       override def test(key: K, value: V): Boolean = predicate(key, value)
@@ -167,26 +169,21 @@ class TKStream[K, V](val source: KStream[K, V]) {
     }, windows, keySerde, thisValueSerde, otherValueSerde)
   }
 
-  def groupByKey(): TKGroupedStream[K, V] = {
-    new TKGroupedStream(source.groupByKey())
-  }
+  def groupByKey(): TKGroupedStream[K, V] = source.groupByKey()
 
-  def groupByKey(keySerde: Serde[K], valSerde: Serde[V]): TKGroupedStream[K, V] = {
-    new TKGroupedStream(source.groupByKey(keySerde, valSerde))
-  }
+
+  def groupByKey(keySerde: Serde[K], valSerde: Serde[V]): TKGroupedStream[K, V] = source.groupByKey(keySerde, valSerde)
 
   def groupBy[K1](keySelector: (K, V) => K1): TKGroupedStream[K1, V] = {
-    new TKGroupedStream(source.groupBy(new KeyValueMapper[K, V, K1] {
+    source.groupBy(new KeyValueMapper[K, V, K1] {
       override def apply(key: K, value: V): K1 = keySelector(key, value)
-
-    }))
+    })
   }
 
   def groupBy[K1](keySelector: (K, V) => K1)(implicit keySerde: Serde[K1], valSerde: Serde[V]): TKGroupedStream[K1, V] = {
-    new TKGroupedStream(source.groupBy(new KeyValueMapper[K, V, K1] {
+    source.groupBy(new KeyValueMapper[K, V, K1] {
       override def apply(key: K, value: V): K1 = keySelector(key, value)
-
-    }, keySerde, valSerde))
+    }, keySerde, valSerde)
   }
 
   def leftJoin[V1, R](otherStream: TKStream[K, V1], joiner: (V, V1) => R, windows: JoinWindows)(
