@@ -169,16 +169,7 @@ class TKStream[K, V](val source: KStream[K, V]) {
     }, windows, keySerde, thisValueSerde, otherValueSerde)
   }
 
-  def groupByKey(): TKGroupedStream[K, V] = source.groupByKey()
-
-
-  def groupByKey(keySerde: Serde[K], valSerde: Serde[V]): TKGroupedStream[K, V] = source.groupByKey(keySerde, valSerde)
-
-  def groupBy[K1](keySelector: (K, V) => K1): TKGroupedStream[K1, V] = {
-    source.groupBy(new KeyValueMapper[K, V, K1] {
-      override def apply(key: K, value: V): K1 = keySelector(key, value)
-    })
-  }
+  def groupByKey(implicit keySerde: Serde[K], valSerde: Serde[V]): TKGroupedStream[K, V] = source.groupByKey(keySerde, valSerde)
 
   def groupBy[K1](keySelector: (K, V) => K1)(implicit keySerde: Serde[K1], valSerde: Serde[V]): TKGroupedStream[K1, V] = {
     source.groupBy(new KeyValueMapper[K, V, K1] {

@@ -5,8 +5,8 @@ import org.apache.kafka.streams.kstream._
 
 class TKGroupedStream[K, V](source: KGroupedStream[K, V]) {
 
-  def aggregate[T](initializer: () => T, aggregator: (K, V, T) => T, storeName: String)(
-    aggValueSerde: Serde[T]): KTable[K, T] = {
+  def aggregate[T](initializer: () => T, aggregator: (K, V, T) => T, storeName: String)
+                  (implicit aggValueSerde: Serde[T]): KTable[K, T] = {
     source.aggregate(new Initializer[T] {
       override def apply(): T = initializer()
     }, new Aggregator[K, V, T] {
@@ -14,8 +14,8 @@ class TKGroupedStream[K, V](source: KGroupedStream[K, V]) {
     }, aggValueSerde, storeName)
   }
 
-  def aggregate[T, W <: Window](initializer: () => T, aggregator: (K, V, T) => T, windows: Windows[W], storeName: String)(
-    aggValueSerde: Serde[T]): KTable[Windowed[K], T] = {
+  def aggregate[T, W <: Window](initializer: () => T, aggregator: (K, V, T) => T, windows: Windows[W], storeName: String)
+                               (implicit aggValueSerde: Serde[T]): KTable[Windowed[K], T] = {
     source.aggregate(new Initializer[T] {
       override def apply(): T = initializer()
     }, new Aggregator[K, V, T] {
