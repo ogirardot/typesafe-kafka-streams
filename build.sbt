@@ -6,9 +6,9 @@ organization := "fr.psug.kafka"
 
 scalaVersion := "2.11.8"
 
-crossScalaVersions := Seq("2.10.6", "2.11.8")
+crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1")
 
-val kafkaVersion = "0.10.0.1"
+val kafkaVersion = "0.10.1.0"
 
 libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka-streams" % kafkaVersion
