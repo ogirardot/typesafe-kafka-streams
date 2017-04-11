@@ -21,6 +21,8 @@
 
 package fr.psug.kafka.streams
 
+import java.lang
+
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.kstream.{KeyValueMapper, _}
@@ -52,7 +54,7 @@ class TKStream[K, V](val source: KStream[K, V]) {
       override def test(key: K, value: V): Boolean = predicate(key, value)
     })
 
-  def selectKey[KK >: K,VV >:V, K1](mapper: (KK, VV) => K1): KStream[K1, V] =
+  def selectKey[KK >: K, VV >: V, K1](mapper: (KK, VV) => K1): KStream[K1, V] =
     source.selectKey(new KeyValueMapper[KK, VV, K1] {
       override def apply(key: KK, value: VV): K1 = {
         mapper(key, value)
@@ -60,39 +62,53 @@ class TKStream[K, V](val source: KStream[K, V]) {
     })
 
 
+  def map[KK >: K, VV >: V, KR, VR, KKR <: KR, VVR <: VR](mapper: (KK, VV) => (KR, VR)): TKStream[KR, VR] = {
 
+    class KeyV(key: KKR, value: VVR) extends KeyValue[KKR, VVR](key, value)
 
-  def map[KK >: K,VV >:V, KR,VR , KKR <:KR , VVR <: VR](mapper: (KK, VV) => (KR, VR)): TKStream[KR, VR] ={
-
-   class KeyV(key:KKR,value:VVR) extends KeyValue[KKR,VVR](key,value)
-
-    val kvmapper  = new  KeyValueMapper[KK, VV,KeyV]  {
+    val kvmapper = new KeyValueMapper[KK, VV, KeyV] {
       override def apply(key: KK, value: VV): KeyValue[KR, VR] = {
         val (outK, outV) = mapper(key, value)
         new KeyValue[KR, VR](outK, outV)
       }
     }
-    new TKStream(source.map(kvmapper ))
+    new TKStream(source.map(kvmapper))
 
   }
 
-  def mapValues[VV >: V , VR, VVR <: VR](mapper: VV => VR): TKStream[K, VR] =
-    source.mapValues(new ValueMapper[VV, VR] {
-      override def apply(value: VV): VR = mapper(value)
-    })
+  def mapValues[VV >: V, VR, VVR <: VR](mapper: VV => VVR): TKStream[K, VR] =
+    new TKStream(source.mapValues(new ValueMapper[VV, VVR] {
+      override def apply(value: VV): VVR = mapper(value)
+    }))
 
   def print(keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
 
   def writeAsText(filePath: String)(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit =
     source.writeAsText(filePath, keySerde, valSerde)
 
-  def flatMap[K1, V1](mapper: (K, V) => Iterable[(K1, V1)]): TKStream[K1, V1] =
-    source.flatMap(new KeyValueMapper[K, V, java.lang.Iterable[KeyValue[K1, V1]]] {
-      override def apply(key: K, value: V): java.lang.Iterable[KeyValue[K1, V1]] = {
+  def flatMap[KR, VR, KK >: K, VV >: V, KKR <: KR, VVR <: VR](mapper: (KK, VV) => Iterable[(KKR, VVR)]): TKStream[KR, VR] = {
+
+    class KeyV(key: KKR, value: VVR) extends KeyValue[KKR, VVR](key, value)
+
+    val mapperKV = new KeyValueMapper[KK, VV, lang.Iterable[KeyV]] {
+      override def apply(key: KK, value: VV): lang.Iterable[KeyV] = {
+
         import scala.collection.JavaConverters._
-        mapper(key, value).map { case (k, v) => new KeyValue[K1, V1](k, v) }.asJava
+        mapper(key, value).map { case (k, v) => new KeyV(k, v) }.asJava
       }
-    })
+    }
+
+    new TKStream(source.flatMap(mapperKV))
+
+  }
+
+
+  /* source.flatMap(new KeyValueMapper[K, V, java.lang.Iterable[KeyValue[K1, V1]]] {
+     override def apply(key: K, value: V): java.lang.Iterable[KeyValue[K1, V1]] = {
+       import scala.collection.JavaConverters._
+       mapper(key, value).map { case (k, v) => new KeyValue[K1, V1](k, v) }.asJava
+     }
+   })*/
 
   def flatMapValues[V1](mapper: V => Iterable[V1]): TKStream[K, V1] =
     source.flatMapValues(new ValueMapper[V, java.lang.Iterable[V1]] {
@@ -118,7 +134,7 @@ class TKStream[K, V](val source: KStream[K, V]) {
     * @return
     */
   def partition(predicate: (K, V) => Boolean): (TKStream[K, V], TKStream[K, V]) = {
-    val in  = source.filter(predicate)
+    val in = source.filter(predicate)
     val out = source.filterNot(predicate)
     (in, out)
   }
