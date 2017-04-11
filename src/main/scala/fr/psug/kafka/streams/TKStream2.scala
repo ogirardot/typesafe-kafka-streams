@@ -23,7 +23,7 @@ package fr.psug.kafka.streams
 
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.KeyValue
-import org.apache.kafka.streams.kstream._
+import org.apache.kafka.streams.kstream.{KeyValueMapper, _}
 import org.apache.kafka.streams.processor.{Processor, ProcessorSupplier, StreamPartitioner}
 
 import scala.language.implicitConversions
@@ -35,11 +35,12 @@ import scala.language.implicitConversions
   * @tparam K - key
   * @tparam V - value
   */
-/*class TKStream[K, V](val source: KStream[K, V]) {
+class TKStream[K, V](val source: KStream[K, V]) {
 
   private implicit def streamToTypesafe[I, J](source: KStream[I, J]): TKStream[I, J] = new TKStream(source)
 
   private implicit def groupedStreamToTypesafe[I, J](source: KGroupedStream[I, J]): TKGroupedStream[I, J] = new TKGroupedStream(source)
+
 
   def filter(predicate: (K, V) => Boolean): TKStream[K, V] =
     source.filter(new Predicate[K, V] {
@@ -51,24 +52,33 @@ import scala.language.implicitConversions
       override def test(key: K, value: V): Boolean = predicate(key, value)
     })
 
-  def selectKey[K1](mapper: (K, V) => K1): TKStream[K1, V] =
-    source.selectKey(new KeyValueMapper[K, V, K1] {
-      override def apply(key: K, value: V): K1 = {
+  def selectKey[KK >: K,VV >:V, K1](mapper: (KK, VV) => K1): KStream[K1, V] =
+    source.selectKey(new KeyValueMapper[KK, VV, K1] {
+      override def apply(key: KK, value: VV): K1 = {
         mapper(key, value)
       }
     })
 
-  def map[K1, V1](mapper: (K, V) => (K1, V1)): TKStream[K1, V1] =
-    source.map(new KeyValueMapper[K, V, KeyValue[K1, V1]] {
-      override def apply(key: K, value: V): KeyValue[K1, V1] = {
-        val (outK, outV) = mapper(key, value)
-        new KeyValue[K1, V1](outK, outV)
-      }
-    })
 
-  def mapValues[V1](mapper: V => V1): TKStream[K, V1] =
-    source.mapValues(new ValueMapper[V, V1] {
-      override def apply(value: V): V1 = mapper(value)
+
+
+  def map[KK >: K,VV >:V, KR,VR , KKR <:KR , VVR <: VR](mapper: (KK, VV) => (KR, VR)): TKStream[KR, VR] ={
+
+   class KeyV(key:KKR,value:VVR) extends KeyValue[KKR,VVR](key,value)
+
+    val kvmapper  = new  KeyValueMapper[KK, VV,KeyV]  {
+      override def apply(key: KK, value: VV): KeyValue[KR, VR] = {
+        val (outK, outV) = mapper(key, value)
+        new KeyValue[KR, VR](outK, outV)
+      }
+    }
+    new TKStream(source.map(kvmapper ))
+
+  }
+
+  def mapValues[VV >: V , VR, VVR <: VR](mapper: VV => VR): TKStream[K, VR] =
+    source.mapValues(new ValueMapper[VV, VR] {
+      override def apply(value: VV): VR = mapper(value)
     })
 
   def print(keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
@@ -200,4 +210,4 @@ import scala.language.implicitConversions
       override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
     }, keySerde, valSerde)
 
-}*/
+}
