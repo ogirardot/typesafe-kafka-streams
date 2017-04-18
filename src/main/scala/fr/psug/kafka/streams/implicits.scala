@@ -23,7 +23,7 @@ package fr.psug.kafka.streams
 
 import org.apache.kafka.common.serialization.{Serde, Serdes}
 import org.apache.kafka.streams.KeyValue
-import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.kstream.{KStream, KTable}
 
 import scala.language.implicitConversions
 
@@ -47,8 +47,16 @@ object KafkaStreamsImplicits {
     * @tparam K key type
     * @tparam V value type
     */
-  implicit class TypesafeImprovement[K, V](source: KStream[K, V]) {
+  implicit class TypesafeKStream[K, V](source: KStream[K, V]) {
     def typesafe = new TKStream[K, V](source)
   }
 
+  implicit class TypesafeTKTable[K, V](source: KTable[K, V]) {
+    def typesafe = new TKTable[K, V](source)
+  }
+
+
+  implicit  def typesafeKStreamUnapply[K, V](tKStream: TKStream[K, V]):KStream[K, V]  =  tKStream.source
+
+  implicit  def typesafeKTableUnapply[K, V](tKSTable: TKTable[K, V]):KTable[K, V]  =  tKSTable.source
 }
