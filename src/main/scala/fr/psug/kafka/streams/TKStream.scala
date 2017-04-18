@@ -21,9 +21,11 @@
 
 package fr.psug.kafka.streams
 
+import java.lang
+
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.KeyValue
-import org.apache.kafka.streams.kstream._
+import org.apache.kafka.streams.kstream.{KeyValueMapper, _}
 import org.apache.kafka.streams.processor.{Processor, ProcessorSupplier, StreamPartitioner}
 
 import scala.language.implicitConversions
@@ -37,9 +39,7 @@ import scala.language.implicitConversions
   */
 class TKStream[K, V](val source: KStream[K, V]) {
 
-  private implicit def streamToTypesafe[I, J](source: KStream[I, J]): TKStream[I, J] = new TKStream(source)
-
-  private implicit def groupedStreamToTypesafe[I, J](source: KGroupedStream[I, J]): TKGroupedStream[I, J] = new TKGroupedStream(source)
+  import TKStream._
 
   def filter(predicate: (K, V) => Boolean): TKStream[K, V] =
     source.filter(new Predicate[K, V] {
@@ -51,38 +51,40 @@ class TKStream[K, V](val source: KStream[K, V]) {
       override def test(key: K, value: V): Boolean = predicate(key, value)
     })
 
-  def selectKey[K1](mapper: (K, V) => K1): TKStream[K1, V] =
-    source.selectKey(new KeyValueMapper[K, V, K1] {
-      override def apply(key: K, value: V): K1 = {
+  def selectKey[KK >: K, VV >: V, K1](mapper: (KK, VV) => K1): KStream[K1, V] =
+    source.selectKey(new KeyValueMapper[KK, VV, K1] {
+      override def apply(key: KK, value: VV): K1 = {
         mapper(key, value)
       }
     })
 
-  def map[K1, V1](mapper: (K, V) => (K1, V1)): TKStream[K1, V1] =
-    source.map(new KeyValueMapper[K, V, KeyValue[K1, V1]] {
-      override def apply(key: K, value: V): KeyValue[K1, V1] = {
-        val (outK, outV) = mapper(key, value)
-        new KeyValue[K1, V1](outK, outV)
-      }
-    })
 
-  def mapValues[V1](mapper: V => V1): TKStream[K, V1] =
-    source.mapValues(new ValueMapper[V, V1] {
-      override def apply(value: V): V1 = mapper(value)
-    })
+  def map[KR, VR](mapper: (K, V) => (KR, VR)): TKStream[KR, VR] =
+    streamToTypesafe(source.map(new KeyValueMapper[K, V, KeyValue[ KR, VR]] {
+      override def apply(key: K, value: V): KeyValue[KR, VR] = {
+        val (outK, outV) = mapper(key, value)
+        new KeyValue(outK, outV)
+      }
+    }))
+
+  def mapValues[VV >: V, VR, VVR <: VR](mapper: VV => VVR): TKStream[K, VR] =
+    new TKStream(source.mapValues(new ValueMapper[VV, VVR] {
+      override def apply(value: VV): VVR = mapper(value)
+    }))
 
   def print(keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
 
   def writeAsText(filePath: String)(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit =
     source.writeAsText(filePath, keySerde, valSerde)
 
-  def flatMap[K1, V1](mapper: (K, V) => Iterable[(K1, V1)]): TKStream[K1, V1] =
-    source.flatMap(new KeyValueMapper[K, V, java.lang.Iterable[KeyValue[K1, V1]]] {
-      override def apply(key: K, value: V): java.lang.Iterable[KeyValue[K1, V1]] = {
+  def flatMap[KR, VR](mapper: (K, V) => Iterable[(KR, VR)]): TKStream[KR, VR] =
+    streamToTypesafe(source.flatMap(new KeyValueMapper[K, V, lang.Iterable[KeyValue[KR, VR]]] {
+      override def apply(key: K, value: V): lang.Iterable[KeyValue[KR, VR]] = {
+
         import scala.collection.JavaConverters._
-        mapper(key, value).map { case (k, v) => new KeyValue[K1, V1](k, v) }.asJava
+        mapper(key, value).map { case (k, v) => new KeyValue(k, v) }.asJava
       }
-    })
+    }))
 
   def flatMapValues[V1](mapper: V => Iterable[V1]): TKStream[K, V1] =
     source.flatMapValues(new ValueMapper[V, java.lang.Iterable[V1]] {
@@ -108,7 +110,7 @@ class TKStream[K, V](val source: KStream[K, V]) {
     * @return
     */
   def partition(predicate: (K, V) => Boolean): (TKStream[K, V], TKStream[K, V]) = {
-    val in  = source.filter(predicate)
+    val in = source.filter(predicate)
     val out = source.filterNot(predicate)
     (in, out)
   }
@@ -138,12 +140,12 @@ class TKStream[K, V](val source: KStream[K, V]) {
       override def get(): Transformer[K, V, KeyValue[K1, V1]] = transformerSupplier()
     }, stateStoreNames: _*)
 
-  def transformValues[R](valueTransformerSupplier: () => ValueTransformer[V, R],
-                         stateStoreNames: String*): TKStream[K, R] = {
-    source.transformValues(new ValueTransformerSupplier[V, R] {
-      override def get(): ValueTransformer[V, R] = valueTransformerSupplier()
-    }, stateStoreNames: _*)
-  }
+
+  def transformValues[R](valueTransformerSupplier: => ValueTransformer[V, R],
+                         stateStoreNames: String*): TKStream[K, R] =
+    streamToTypesafe(source.transformValues(new ValueTransformerSupplier[V, R] {
+      override def get(): ValueTransformer[V, R] = valueTransformerSupplier
+    }, stateStoreNames: _*))
 
   def process(processorSupplier: () => Processor[K, V], stateStoreNames: String*): Unit = {
     source.process(new ProcessorSupplier[K, V] {
@@ -155,18 +157,18 @@ class TKStream[K, V](val source: KStream[K, V]) {
     implicit keySerde: Serde[K],
     thisValueSerde: Serde[V],
     otherValueSerde: Serde[V1]): TKStream[K, R] = {
-    source.join(otherStream.source, new ValueJoiner[V, V1, R] {
+    streamToTypesafe(source.join(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
-    }, windows, keySerde, thisValueSerde, otherValueSerde)
+    }, windows, keySerde, thisValueSerde, otherValueSerde))
   }
 
   def outerJoin[V1, R](otherStream: TKStream[K, V1], joiner: (V, V1) => R, windows: JoinWindows)(
     implicit keySerde: Serde[K],
     thisValueSerde: Serde[V],
     otherValueSerde: Serde[V1]): TKStream[K, R] = {
-    source.outerJoin(otherStream.source, new ValueJoiner[V, V1, R] {
+    streamToTypesafe(source.outerJoin(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
-    }, windows, keySerde, thisValueSerde, otherValueSerde)
+    }, windows, keySerde, thisValueSerde, otherValueSerde))
   }
 
   def groupByKey(implicit keySerde: Serde[K], valSerde: Serde[V]): TKGroupedStream[K, V] = source.groupByKey(keySerde, valSerde)
@@ -180,24 +182,31 @@ class TKStream[K, V](val source: KStream[K, V]) {
   def leftJoin[V1, R](otherStream: TKStream[K, V1], joiner: (V, V1) => R, windows: JoinWindows)(
     implicit keySerde: Serde[K], thisValueSerde: Serde[V],
     otherValueSerde: Serde[V1]): TKStream[K, R] =
-    source.leftJoin(otherStream.source, new ValueJoiner[V, V1, R] {
+    streamToTypesafe(source.leftJoin(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
-    }, windows, keySerde, thisValueSerde, otherValueSerde)
+    }, windows, keySerde, thisValueSerde, otherValueSerde))
 
   def leftJoin[V1, V2](otherStream: TKStream[K, V1], joiner: (V, V1) => V2, windows: JoinWindows): TKStream[K, V2] =
-    source.leftJoin(otherStream.source, new ValueJoiner[V, V1, V2] {
+    streamToTypesafe(source.leftJoin(otherStream.source, new ValueJoiner[V, V1, V2] {
       override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
-    }, windows)
+    }, windows))
 
   def leftJoin[V1, V2](table: KTable[K, V1], joiner: (V, V1) => V2): TKStream[K, V2] =
-    source.leftJoin(table, new ValueJoiner[V, V1, V2] {
+    streamToTypesafe(source.leftJoin(table, new ValueJoiner[V, V1, V2] {
       override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
-    })
+    }))
 
   def leftJoin[V1, V2](table: KTable[K, V1], joiner: (V, V1) => V2)
                       (implicit keySerde: Serde[K], valSerde: Serde[V]): TKStream[K, V2] =
-    source.leftJoin(table, new ValueJoiner[V, V1, V2] {
+    streamToTypesafe(source.leftJoin(table, new ValueJoiner[V, V1, V2] {
       override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
-    }, keySerde, valSerde)
+    }, keySerde, valSerde))
+
+}
+
+object TKStream {
+  private implicit def streamToTypesafe[I, J](source: KStream[I, J]): TKStream[I, J] = new TKStream[I, J](source)
+
+  private implicit def groupedStreamToTypesafe[I, J](source: KGroupedStream[I, J]): TKGroupedStream[I, J] = new TKGroupedStream(source)
 
 }

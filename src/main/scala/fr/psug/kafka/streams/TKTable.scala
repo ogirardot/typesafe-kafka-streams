@@ -37,10 +37,7 @@ import scala.language.implicitConversions
   */
 class TKTable[K, V](val source: KTable[K, V]) {
 
-
-  private implicit def streamToTypesafe[I, J](source: KTable[I, J]): TKTable[I, J] = new TKTable(source)
-
-  private implicit def groupedStreamToTypesafe[I, J](source: KGroupedTable[I, J]): TKGroupedTable[I, J] = new TKGroupedTable(source)
+  import TKTable._
 
   def filter(predicate: (K, V) => Boolean): TKTable[K, V] =
     source.filter(new Predicate[K, V] {
@@ -54,9 +51,9 @@ class TKTable[K, V](val source: KTable[K, V]) {
 
 
   def mapValues[V1](mapper: V => V1): TKTable[K, V1] =
-    source.mapValues(new ValueMapper[V, V1] {
+    tableToTypesafe(source.mapValues(new ValueMapper[V, V1] {
       override def apply(value: V): V1 = mapper(value)
-    })
+    }))
 
   def print(keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
 
@@ -97,18 +94,17 @@ class TKTable[K, V](val source: KTable[K, V]) {
 
 
   def join[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R): TKTable[K, R] = {
-    source.join(otherStream.source, new ValueJoiner[V, V1, R] {
+    tableToTypesafe(source.join(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
-    })
+    }))
   }
 
 
   def outerJoin[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R): TKTable[K, R] = {
-    source.outerJoin(otherStream.source, new ValueJoiner[V, V1, R] {
+    tableToTypesafe(source.outerJoin(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
-    })
+    }))
   }
-
 
   def groupBy[K1, V1](selector: (K, V) => KeyValue[K1, V1])(implicit keySerde: Serde[K1], valSerde: Serde[V1]): TKGroupedTable[K1, V1] = {
     source.groupBy(new KeyValueMapper[K, V, KeyValue[K1, V1]] {
@@ -118,13 +114,20 @@ class TKTable[K, V](val source: KTable[K, V]) {
 
 
   def leftJoin[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R): TKTable[K, R] =
-    source.leftJoin(otherStream.source, new ValueJoiner[V, V1, R] {
+    tableToTypesafe(source.leftJoin(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
-    })
+    }))
 
 
   def getStoreName: String = source.getStoreName
 
   def toStream: TKStream[K, V] = new TKStream[K, V](source.toStream)
+
+}
+
+object TKTable {
+  private implicit def tableToTypesafe[I, J](source: KTable[I, J]): TKTable[I, J] = new TKTable(source)
+
+  private implicit def groupedStreamToTypesafe[I, J](source: KGroupedTable[I, J]): TKGroupedTable[I, J] = new TKGroupedTable(source)
 
 }
