@@ -93,14 +93,14 @@ class TKTable[K, V](val source: KTable[K, V]) {
     source.to(keySerde, valSerde, partitioner, topic)
 
 
-  def join[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R): TKTable[K, R] = {
+  def join[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R)(implicit keySerde: Serde[K], valSerde: Serde[V1]): TKTable[K, R] = {
     tableToTypesafe(source.join(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
     }))
   }
 
 
-  def outerJoin[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R): TKTable[K, R] = {
+  def outerJoin[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R)(implicit keySerde: Serde[K], valSerde: Serde[V1]): TKTable[K, R] = {
     tableToTypesafe(source.outerJoin(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
     }))
@@ -113,7 +113,7 @@ class TKTable[K, V](val source: KTable[K, V]) {
   }
 
 
-  def leftJoin[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R): TKTable[K, R] =
+  def leftJoin[V1, R](otherStream: TKTable[K, V1], joiner: (V, V1) => R)(implicit keySerde: Serde[K], valSerde: Serde[V1]): TKTable[K, R] =
     tableToTypesafe(source.leftJoin(otherStream.source, new ValueJoiner[V, V1, R] {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
     }))

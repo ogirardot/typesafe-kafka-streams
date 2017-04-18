@@ -186,15 +186,6 @@ class TKStream[K, V](val source: KStream[K, V]) {
       override def apply(value1: V, value2: V1): R = joiner(value1, value2)
     }, windows, keySerde, thisValueSerde, otherValueSerde))
 
-  def leftJoin[V1, V2](otherStream: TKStream[K, V1], joiner: (V, V1) => V2, windows: JoinWindows): TKStream[K, V2] =
-    streamToTypesafe(source.leftJoin(otherStream.source, new ValueJoiner[V, V1, V2] {
-      override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
-    }, windows))
-
-  def leftJoin[V1, V2](table: KTable[K, V1], joiner: (V, V1) => V2): TKStream[K, V2] =
-    streamToTypesafe(source.leftJoin(table, new ValueJoiner[V, V1, V2] {
-      override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
-    }))
 
   def leftJoin[V1, V2](table: KTable[K, V1], joiner: (V, V1) => V2)
                       (implicit keySerde: Serde[K], valSerde: Serde[V]): TKStream[K, V2] =
