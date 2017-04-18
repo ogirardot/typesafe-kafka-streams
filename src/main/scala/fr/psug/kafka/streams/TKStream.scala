@@ -35,7 +35,7 @@ import scala.language.implicitConversions
   * @tparam K - key
   * @tparam V - value
   */
-/*class TKStream[K, V](val source: KStream[K, V]) {
+class TKStream[K, V](val source: KStream[K, V]) {
 
   private implicit def streamToTypesafe[I, J](source: KStream[I, J]): TKStream[I, J] = new TKStream(source)
 
@@ -200,4 +200,4 @@ import scala.language.implicitConversions
       override def apply(value1: V, value2: V1): V2 = joiner(value1, value2)
     }, keySerde, valSerde)
 
-}*/
+}
