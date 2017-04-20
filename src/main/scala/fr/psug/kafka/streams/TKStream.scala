@@ -60,16 +60,17 @@ class TKStream[K, V](val source: KStream[K, V]) {
 
 
   def map[KR, VR](mapper: (K, V) => (KR, VR)): TKStream[KR, VR] =
-    streamToTypesafe(source.map(new KeyValueMapper[K, V, KeyValue[ KR, VR]] {
+    streamToTypesafe(source.map(new KeyValueMapper[K, V, KeyValue[KR, VR]] {
       override def apply(key: K, value: V): KeyValue[KR, VR] = {
         val (outK, outV) = mapper(key, value)
         new KeyValue(outK, outV)
       }
     }))
 
-  def mapValues[VV >: V, VR, VVR <: VR](mapper: VV => VVR): TKStream[K, VR] =
-    new TKStream(source.mapValues(new ValueMapper[VV, VVR] {
-      override def apply(value: VV): VVR = mapper(value)
+
+  def mapValues[VR](mapper: V => VR): TKStream[K, VR] =
+    new TKStream(source.mapValues(new ValueMapper[V, VR] {
+      override def apply(value: V): VR = mapper(value)
     }))
 
   def print(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
