@@ -5,9 +5,9 @@ A started draft of a typesafe - scala - compatible API
 The artifact is deployed on sonatype's central repository, so all you need is to add it to your resolvers and use it like that : 
 
 ```
-resolvers += Resolver.sonatypeRepo("snapshot")
+resolvers += Resolver.sonatypeRepo("snapshots")
 
-libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.1.1-SNAPSHOT"
+libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "X.X.X-SNAPSHOT"
 ```
 
 Or to use the latest stable release
@@ -15,7 +15,7 @@ Or to use the latest stable release
 ```
 resolvers += Resolver.sonatypeRepo("releases")
 
-libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.1.0"
+libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.2.1"
 ```
 
 ## In practice

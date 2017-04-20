@@ -72,7 +72,7 @@ class TKStream[K, V](val source: KStream[K, V]) {
       override def apply(value: VV): VVR = mapper(value)
     }))
 
-  def print(keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
+  def print(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit = source.print(keySerde, valSerde)
 
   def writeAsText(filePath: String)(implicit keySerde: Serde[K], valSerde: Serde[V]): Unit =
     source.writeAsText(filePath, keySerde, valSerde)
