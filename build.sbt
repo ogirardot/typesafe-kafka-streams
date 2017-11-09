@@ -1,6 +1,6 @@
 import de.heikoseeberger.sbtheader.license.MIT
 
-name := "typesafe-kafka-streams"
+name := "typesafe-kafka-streams-11"
 
 organization := "fr.psug.kafka"
 
@@ -8,7 +8,7 @@ scalaVersion := "2.11.8"
 
 crossScalaVersions := Seq("2.10.6", "2.11.11", "2.12.3")
 
-val kafkaVersion = "0.10.2.1"
+val kafkaVersion = "0.11.0.1"
 
 libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka-streams" % kafkaVersion
@@ -51,3 +51,21 @@ pomExtra in Global := {
       </developer>
     </developers>
 }
+
+import ReleaseTransformations._
+
+releaseCrossBuild := true // true if you cross-build the project for multiple Scala versions
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  releaseStepCommand("publishSigned"),
+  setNextVersion,
+  commitNextVersion,
+  releaseStepCommand("sonatypeReleaseAll"),
+  pushChanges
+)
