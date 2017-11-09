@@ -10,12 +10,22 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "X.X.X-SNAPSHOT"
 ```
 
-Or to use the latest stable release
+Or to use the latest stable release 
+
+Ex: for Kafka 0.10.x :
 
 ```
 resolvers += Resolver.sonatypeRepo("releases")
 
-libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.2.1"
+libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.2.2"
+```
+
+for Kafka 0.11.x :
+
+```
+resolvers += Resolver.sonatypeRepo("releases")
+
+libraryDependencies += "fr.psug.kafka" %% "typesafe-kafka-streams" % "0.2.3"
 ```
 
 ## In practice
